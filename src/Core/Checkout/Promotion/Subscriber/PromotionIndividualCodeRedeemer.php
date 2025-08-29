@@ -77,10 +77,17 @@ class PromotionIndividualCodeRedeemer implements EventSubscriberInterface
         $promotions = $this->getIndividualCodePromotions($codes, $context);
 
         foreach ($lineItems as $item) {
-            foreach ($promotions as $promotion) {
-                /** @var string $code */
-                $code = $item->getPayload()['code'] ?? '';
+            if (empty($item->getPayload())) {
+                continue;
+            }
 
+            if (!\array_key_exists('code', $item->getPayload())) {
+                continue;
+            }
+
+            $code = \is_string($item->getPayload()['code']) ? $item->getPayload()['code'] : '';
+
+            foreach ($promotions as $promotion) {
                 if ($code !== $promotion->getCode()) {
                     continue;
                 }

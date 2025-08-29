@@ -273,6 +273,8 @@ class DefinitionValidator
         $fields = $definition->getFields();
 
         $notices = [];
+        $parentClass = $reflection->getParentClass();
+
         foreach ($reflection->getProperties() as $property) {
             $key = $definition->getEntityName() . '.' . $property->getName();
             if (\in_array($key, self::IGNORE_FIELDS, true)) {
@@ -293,12 +295,7 @@ class DefinitionValidator
                 $notices[] = \sprintf('Field %s in entity struct should not be private in %s, as it needs to be accessible by the DAL, see https://developer.shopware.com/docs/guides/plugins/plugins/framework/data-handling/add-custom-complex-data.html#entity-class', $property->getName(), $definition->getClass());
             }
 
-            $parentClass = $reflection->getParentClass();
-            if (!$parentClass) {
-                continue;
-            }
-
-            if ($parentClass->getName() === MappingEntityDefinition::class) {
+            if (!$parentClass || $parentClass->getName() === MappingEntityDefinition::class) {
                 continue;
             }
 
@@ -1126,6 +1123,16 @@ class DefinitionValidator
             || $association->getFlag(SetNullOnDelete::class)) {
             $fks = $manager->listTableForeignKeys($reference->getEntityName());
 
+            $deleteFlag = $association->getFlag(CascadeDelete::class)
+                ?? $association->getFlag(RestrictDelete::class)
+                ?? $association->getFlag(SetNullOnDelete::class);
+
+            if (!$deleteFlag instanceof Flag) {
+                return $associationViolations;
+            }
+
+            $deleteFlagClass = $deleteFlag::class;
+
             foreach ($fks as $fk) {
                 if ($fk->getReferencedTableName()->toString() !== $definition->getEntityName()
                     || !\in_array($association->getReferenceField(), $fk->getReferencingColumnNames(), true)
@@ -1133,15 +1140,7 @@ class DefinitionValidator
                     continue;
                 }
 
-                $deleteFlag = $association->getFlag(CascadeDelete::class)
-                    ?? $association->getFlag(RestrictDelete::class)
-                    ?? $association->getFlag(SetNullOnDelete::class);
-
-                if (!$deleteFlag instanceof Flag) {
-                    continue;
-                }
-
-                if (\in_array($fk->getOnDeleteAction()->value, self::DELETE_FLAG_TO_ACTION_MAPPING[$deleteFlag::class], true)) {
+                if (\in_array($fk->getOnDeleteAction()->value, self::DELETE_FLAG_TO_ACTION_MAPPING[$deleteFlagClass], true)) {
                     continue;
                 }
 
@@ -1150,10 +1149,10 @@ class DefinitionValidator
                     . 'because Association "%s" on entity "%s" defined flag "%s", got "%s" instead.',
                     $fk->getName(),
                     $reference->getEntityName(),
-                    self::DELETE_FLAG_TO_ACTION_MAPPING[$deleteFlag::class][0],
+                    self::DELETE_FLAG_TO_ACTION_MAPPING[$deleteFlagClass][0],
                     $association->getPropertyName(),
                     $definition->getEntityName(),
-                    $deleteFlag::class,
+                    $deleteFlagClass,
                     $fk->getOnDeleteAction()->value
                 );
             }

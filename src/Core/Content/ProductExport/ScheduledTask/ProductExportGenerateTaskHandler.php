@@ -49,14 +49,14 @@ final class ProductExportGenerateTaskHandler extends ScheduledTaskHandler
     {
         $salesChannelIds = $this->fetchSalesChannelIds();
 
+        $now = new \DateTimeImmutable('now');
+
         foreach ($salesChannelIds as $salesChannelId) {
             $productExports = $this->fetchProductExports($salesChannelId);
 
             if ($productExports->count() === 0) {
                 continue;
             }
-
-            $now = new \DateTimeImmutable('now');
 
             foreach ($productExports as $productExport) {
                 if (!$this->shouldBeRun($productExport, $now)) {

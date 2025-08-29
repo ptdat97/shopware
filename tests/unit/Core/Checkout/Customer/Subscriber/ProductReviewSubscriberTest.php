@@ -199,6 +199,7 @@ class ProductReviewSubscriberTest extends TestCase
         $entity = $invalidEntity ? ProductDefinition::ENTITY_NAME : ProductReviewDefinition::ENTITY_NAME;
 
         $writtenResults = [];
+
         foreach ($ids as $id) {
             $writtenResult = $this->createMock(EntityWriteResult::class);
             $writtenResult->method('getPrimaryKey')->willReturn($id);

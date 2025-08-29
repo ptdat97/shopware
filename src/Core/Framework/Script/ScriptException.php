@@ -2,6 +2,8 @@
 
 namespace Shopware\Core\Framework\Script;
 
+use Shopware\Core\Framework\Api\Controller\Exception\PermissionDeniedException;
+use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\HttpException;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Script\Exception\ScriptExecutionFailedException;
@@ -115,5 +117,21 @@ class ScriptException extends HttpException
             'Required function "{{ functionName }}" missing in script "{{ scriptName }}", please make sure you add the required block in your script.',
             ['functionName' => $functionName, 'scriptName' => $scriptName]
         );
+    }
+
+    /**
+     * @deprecated tag:v6.8.0 - reason:return-type-change - Will return self
+     */
+    public static function permissionDenied(): self|PermissionDeniedException
+    {
+        if (Feature::isActive('v6.8.0.0')) {
+            return new self(
+                Response::HTTP_FORBIDDEN,
+                'FRAMEWORK__PERMISSION_DENIED',
+                'The user does not have the permission to do this action.'
+            );
+        }
+
+        return new PermissionDeniedException();
     }
 }

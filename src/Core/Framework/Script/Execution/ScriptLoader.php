@@ -47,8 +47,6 @@ class ScriptLoader implements EventSubscriberInterface
      */
     public function get(string $hook): array
     {
-        $hookScripts = [];
-
         $cacheItem = $this->cache->getItem(self::CACHE_KEY);
         if ($cacheItem->isHit() && $cacheItem->get()) {
             /** @var list<Script> */

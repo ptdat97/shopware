@@ -209,9 +209,8 @@ class SeoUrlGenerator
 
             $lastField = end($fields);
 
-            $runtime = new Runtime();
-
             if ($lastField && $lastField->getFlag(Runtime::class)) {
+                $runtime = $lastField->getFlag(Runtime::class);
                 $associations = array_merge($associations, $runtime->getDepends());
             }
 

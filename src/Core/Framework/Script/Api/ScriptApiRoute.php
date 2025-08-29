@@ -3,14 +3,13 @@
 namespace Shopware\Core\Framework\Script\Api;
 
 use Shopware\Core\Framework\Api\Context\AdminApiSource;
-use Shopware\Core\Framework\Api\Controller\Exception\PermissionDeniedException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Routing\ApiRouteScope;
-use Shopware\Core\Framework\Script\Execution\Script;
 use Shopware\Core\Framework\Script\Execution\ScriptAppInformation;
 use Shopware\Core\Framework\Script\Execution\ScriptExecutor;
 use Shopware\Core\Framework\Script\Execution\ScriptLoader;
+use Shopware\Core\Framework\Script\ScriptException;
 use Shopware\Core\PlatformRequest;
 use Shopware\Core\System\SalesChannel\Api\ResponseFields;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,24 +56,27 @@ class ScriptApiRoute
 
     private function validate(ApiHook $hook, Context $context): void
     {
+        if ($context->isAllowed('app.all')) {
+            return;
+        }
+
+        $source = $context->getSource();
+
         $scripts = $this->loader->get($hook->getName());
 
-        /** @var Script $script */
         foreach ($scripts as $script) {
             if (!$script->isAppScript()) {
-                throw new PermissionDeniedException();
+                throw ScriptException::permissionDenied();
             }
 
-            /** @var ScriptAppInformation $appInfo */
             $appInfo = $script->getScriptAppInformation();
 
-            $source = $context->getSource();
-            if ($source instanceof AdminApiSource && $source->getIntegrationId() === $appInfo->getIntegrationId()) {
-                // allow access to app endpoints from the integration of the same app
-                continue;
+            if (!$appInfo instanceof ScriptAppInformation) {
+                throw ScriptException::permissionDenied();
             }
 
-            if ($context->isAllowed('app.all')) {
+            if ($source instanceof AdminApiSource && $source->getIntegrationId() === $appInfo->getIntegrationId()) {
+                // allow access to app endpoints from the integration of the same app
                 continue;
             }
 
@@ -83,7 +85,7 @@ class ScriptApiRoute
                 continue;
             }
 
-            throw new PermissionDeniedException();
+            throw ScriptException::permissionDenied();
         }
     }
 }

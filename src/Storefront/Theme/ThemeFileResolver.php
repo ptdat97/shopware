@@ -149,7 +149,7 @@ class ThemeFileResolver
                     continue;
                 }
 
-                throw new ThemeCompileException(
+                throw ThemeException::themeCompileException(
                     $themeConfig->getTechnicalName(),
                     \sprintf('Unable to load file "Resources/%s". Did you forget to build the theme? Try running ./bin/build-storefront.sh', $filepath)
                 );
@@ -198,12 +198,13 @@ class ThemeFileResolver
 
     private function convertPathsToAbsolute(StorefrontPluginConfiguration $themeConfig, FileCollection $files): void
     {
+        $fs = $this->themeFilesystemResolver->getFilesystemForStorefrontConfig($themeConfig);
+
         foreach ($files->getElements() as $file) {
             if ($this->isInclude($file->getFilepath())) {
                 continue;
             }
 
-            $fs = $this->themeFilesystemResolver->getFilesystemForStorefrontConfig($themeConfig);
             if ($fs->has('Resources', $file->getFilepath())) {
                 $file->setFilepath($fs->realpath('Resources', $file->getFilepath()));
             }

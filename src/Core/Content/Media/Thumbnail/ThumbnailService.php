@@ -258,6 +258,8 @@ class ThumbnailService
             ['ids' => ArrayParameterType::BINARY]
         );
 
+        $fileSystem = $this->getFileSystem($media);
+
         try {
             $event = new MediaPathChangedEvent($context);
 
@@ -271,7 +273,6 @@ class ThumbnailService
 
                 $this->writeThumbnail($thumbnail, $media, $path, $config->getThumbnailQuality());
 
-                $fileSystem = $this->getFileSystem($media);
                 if ($imageSize === $thumbnailSize && $fileSystem->fileSize($media->getPath()) < $fileSystem->fileSize($path)) {
                     // write file to file system
                     $fileSystem->write($path, $fileSystem->read($media->getPath()));

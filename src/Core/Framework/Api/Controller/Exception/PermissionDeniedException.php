@@ -6,6 +6,9 @@ use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\ShopwareHttpException;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * @deprecated tag:v6.8.0 - will be removed with v6.8.0.0
+ */
 #[Package('framework')]
 class PermissionDeniedException extends ShopwareHttpException
 {
