@@ -121,6 +121,8 @@
 
         <service id="Shopware\Elasticsearch\Framework\Command\ElasticsearchTestAnalyzerCommand">
             <argument type="service" id="OpenSearch\Client"/>
+            <argument>%elasticsearch.analysis.analyzer%</argument>
+            <argument>%elasticsearch.analysis.filter%</argument>
 
             <tag name="console.command"/>
         </service>
