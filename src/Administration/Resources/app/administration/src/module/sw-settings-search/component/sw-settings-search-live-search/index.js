@@ -370,7 +370,14 @@ export default {
                 }
 
                 const label = this.humanizeField(parsedQuery.field);
-                const score = parseFloat(matchedQueries[matchedQuery]) || 0;
+                const rawScore = parseFloat(matchedQueries[matchedQuery]) || 0;
+
+                // Nested / leaf fields are named at the field level, so their score already
+                // includes the field weight; text fields are named per clause, so their score
+                // is the raw relevance without it. Scale the un-weighted ones by their ranking
+                // so every field's contribution is on the same footing and the bars compare.
+                const ranking = parsedQuery.ranking ?? 1;
+                const score = parsedQuery.weighted ? rawScore : rawScore * ranking;
 
                 if (!groups.has(label)) {
                     groups.set(label, { label, ranking: parsedQuery.ranking ?? null, signals: new Map() });
@@ -427,8 +434,8 @@ export default {
         /**
          * Turns field/boost/cross rows into panel rows. Every clause bar is
          * scaled to the single strongest clause across the whole breakdown, so
-         * bars are comparable between fields; the raw Elasticsearch match score
-         * is shown per clause. Rows and their clauses are ordered strongest
+         * bars are comparable between fields; the weight-scaled match score
+         * (see collectFieldRows) is shown per clause. Rows and their clauses are ordered strongest
          * first. Deliberately NOT a "% of total" — Elasticsearch keeps the
          * strongest clause plus a fraction of the rest and then applies the
          * field weight, so clause scores do not sum to `_score`. Shared by the

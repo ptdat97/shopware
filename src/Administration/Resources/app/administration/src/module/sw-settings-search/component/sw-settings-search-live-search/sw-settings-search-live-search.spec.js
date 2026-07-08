@@ -405,10 +405,52 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
         ]);
         expect(rows[0].ranking).toBe(1000);
         expect(rows[1].ranking).toBe(500);
-        // each field keeps its match clauses as signals; bars share one scale (global max = 30)
+        // each field keeps its match clauses as signals; per-clause (text field) scores are
+        // scaled by the field weight so they compare with weighted nested/leaf scores
+        // (30 * 1000 = 30000, 12 * 500 = 6000); bars share one scale (global max = 30000)
         expect(rows[0].signals).toHaveLength(1);
-        expect(rows[0].signals[0]).toEqual({ type: 'exact', term: 'iron', score: '30', barWidth: '100%', context: null });
-        expect(rows[1].signals[0]).toEqual({ type: 'prefix', term: 'iron', score: '12', barWidth: '40%', context: null });
+        expect(rows[0].signals[0]).toEqual({ type: 'exact', term: 'iron', score: '30000', barWidth: '100%', context: null });
+        expect(rows[1].signals[0]).toEqual({ type: 'prefix', term: 'iron', score: '6000', barWidth: '20%', context: null });
+    });
+
+    it('scales per-clause (text) field scores by their weight so they compare with already-weighted nested scores', async () => {
+        const wrapper = await createWrapper();
+        await flushPromises();
+
+        const item = {
+            extensions: {
+                search: {
+                    _score: 4100,
+                    matched_queries: {
+                        // text field: named per clause -> raw relevance, must be scaled by the weight (700)
+                        [JSON.stringify({ field: 'name', term: 'marble', type: 'exact', ranking: 700 })]: 2.8,
+                        // nested field: named at field level -> its score already carries the weight (500)
+                        [JSON.stringify({
+                            field: 'manufacturer.name',
+                            term: 'gaylord',
+                            type: 'exact',
+                            ranking: 500,
+                            weighted: true,
+                        })]: 2121.7,
+                    },
+                },
+            },
+        };
+
+        const rows = wrapper.vm.getExplainBreakdown(item).sections[0].rows;
+        const byField = Object.fromEntries(
+            rows.map((row) => [
+                row.label,
+                row,
+            ]),
+        );
+
+        // product name: 2.8 * 700 = 1960 (previously shown as a dwarfed 2.8; float math -> one decimal)
+        expect(byField.name.signals[0].score).toBe('1960.0');
+        // manufacturer: already weighted -> kept as-is
+        expect(byField['manufacturer.name'].signals[0].score).toBe('2121.7');
+        // both bars now on a comparable scale (not 0.1% vs 100%)
+        expect(parseFloat(byField.name.signals[0].barWidth)).toBeGreaterThan(50);
     });
 
     it('should show partial (ngram) matches and explain the shared letter fragment', async () => {
@@ -552,7 +594,8 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
 
         expect(phraseSignals).toHaveLength(1);
         expect(phraseSignals[0].type).toBe('phrase');
-        expect(phraseSignals[0].score).toBe('17.4');
+        // per-clause score scaled by the field weight (17.4 * 700; float math -> one decimal)
+        expect(phraseSignals[0].score).toBe('12180.0');
     });
 
     it('should keep only the strongest match type per term', async () => {
@@ -591,9 +634,10 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
             'exact',
             'prefix',
         ]);
+        // per-clause scores scaled by the field weight (30 * 1000, 12 * 1000)
         expect(rows[0].signals.map((signal) => signal.score)).toEqual([
-            '30',
-            '12',
+            '30000',
+            '12000',
         ]);
         expect(rows[0].signals[0].barWidth).toBe('100%');
         expect(rows[0].signals[1].barWidth).toBe('40%');
