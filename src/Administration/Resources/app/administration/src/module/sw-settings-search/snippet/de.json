@@ -122,6 +122,8 @@
       "partialContextWhole": "· in „{word}“",
       "scoreHelpText": "Die von Elasticsearch kombinierte Relevanz für dieses Ergebnis. Innerhalb jedes Felds wird der stärkste Treffer behalten und ein kleiner Bruchteil der schwächeren (unscharf, Präfix, partiell) addiert, dann mit der Gewichtung des Felds multipliziert. Die hier gezeigten Balken sind bereits mit der Gewichtung skaliert, sodass Felder mit unterschiedlicher Gewichtung direkt verglichen werden können. Jeder Balken zeigt nur den stärksten Treffer eines Felds, daher bleiben sie zusammen etwas unter der Gesamtpunktzahl – der Unterschied sind die schwächeren Treffer desselben Felds, die nicht einzeln dargestellt werden. Dasselbe Wort kann in zwei Feldern auch unterschiedlich punkten – die Punktzahl jedes Felds hängt davon ab, wie selten das Wort dort ist und wie kurz der Feldtext ist.",
       "uniformScoresHint": "Alle Ergebnisse haben dieselbe Punktzahl, daher ist ihre Reihenfolge hier nicht aussagekräftig.",
+      "matchedTerms": "Gefunden",
+      "unmatchedTerms": "Nicht gefunden",
       "matchType": {
         "exact": "exakt",
         "fuzzy": "unscharf",

@@ -196,6 +196,14 @@
                 {{ $t('sw-settings-search.liveSearchTab.uniformScoresHint') }}
             </p>
 
+            <p
+                v-if="selectedExplainBreakdown.terms && selectedExplainBreakdown.terms.missed.length"
+                class="sw-settings-search-live-search__explain-terms"
+            >
+                <span class="sw-settings-search-live-search__explain-terms-matched">{{ $t('sw-settings-search.liveSearchTab.matchedTerms') }}: {{ selectedExplainBreakdown.terms.matched.join(', ') || '—' }}</span>
+                <span class="sw-settings-search-live-search__explain-terms-missed">{{ $t('sw-settings-search.liveSearchTab.unmatchedTerms') }}: {{ selectedExplainBreakdown.terms.missed.join(', ') }}</span>
+            </p>
+
             <div
                 v-for="(section, sectionIndex) in selectedExplainBreakdown.sections"
                 :key="sectionIndex"

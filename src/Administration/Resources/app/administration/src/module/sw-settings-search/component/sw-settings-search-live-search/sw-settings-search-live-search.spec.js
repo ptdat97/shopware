@@ -453,6 +453,65 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
         expect(parseFloat(byField.name.signals[0].barWidth)).toBeGreaterThan(50);
     });
 
+    it('reports which query words matched and which did not for a multi-word search', async () => {
+        const wrapper = await createWrapper();
+        await flushPromises();
+        await wrapper.setData({ liveSearchTerm: 'marble gaylord' });
+
+        const item = {
+            extensions: {
+                search: {
+                    _score: 100,
+                    // only "marble" produced a matched clause; "gaylord" hit nothing on this result
+                    matched_queries: {
+                        [JSON.stringify({ field: 'name', term: 'marble', type: 'exact', ranking: 700 })]: 30,
+                    },
+                },
+            },
+        };
+
+        expect(wrapper.vm.getExplainBreakdown(item).terms).toEqual({ matched: ['marble'], missed: ['gaylord'] });
+    });
+
+    it('reports every word as matched when the result hit all query words', async () => {
+        const wrapper = await createWrapper();
+        await flushPromises();
+        await wrapper.setData({ liveSearchTerm: 'marble gaylord' });
+
+        const item = {
+            extensions: {
+                search: {
+                    _score: 100,
+                    matched_queries: {
+                        [JSON.stringify({ field: 'name', term: 'marble', type: 'exact', ranking: 700 })]: 30,
+                        [JSON.stringify({ field: 'manufacturer.name', term: 'gaylord', type: 'exact', ranking: 500 })]: 20,
+                    },
+                },
+            },
+        };
+
+        expect(wrapper.vm.getExplainBreakdown(item).terms).toEqual({ matched: ['marble', 'gaylord'], missed: [] });
+    });
+
+    it('does not report term coverage for a single-word search (coverage is trivial)', async () => {
+        const wrapper = await createWrapper();
+        await flushPromises();
+        await wrapper.setData({ liveSearchTerm: 'marble' });
+
+        const item = {
+            extensions: {
+                search: {
+                    _score: 100,
+                    matched_queries: {
+                        [JSON.stringify({ field: 'name', term: 'marble', type: 'exact', ranking: 700 })]: 30,
+                    },
+                },
+            },
+        };
+
+        expect(wrapper.vm.getExplainBreakdown(item).terms).toBeNull();
+    });
+
     it('should show partial (ngram) matches and explain the shared letter fragment', async () => {
         const wrapper = await createWrapper();
         await flushPromises();

@@ -102,6 +102,15 @@ export default {
         },
 
         /**
+         * The term the results were searched for. Core keeps it in
+         * `liveSearchTerm`; the AdvancedSearch override uses `searchTerm` and
+         * overrides this accordingly, so the shared explain helpers can read it.
+         */
+        currentSearchTerm() {
+            return this.liveSearchTerm ?? '';
+        },
+
+        /**
          * How many results precede the page currently shown in the grid, so the
          * rank keeps counting across pages. Core loads the results and paginates
          * client-side (nothing precedes → 0); the AdvancedSearch override
@@ -331,6 +340,7 @@ export default {
 
             return {
                 total: this.getScoreValue(item),
+                terms: this.termCoverage(matchedQueries),
                 sections: [
                     {
                         label: this.$t('sw-settings-search.liveSearchTab.relevance'),
@@ -338,6 +348,36 @@ export default {
                     },
                 ],
             };
+        },
+
+        /**
+         * For a multi-word search, which of the entered words this result actually
+         * matched on and which it did not — so a merchant can see e.g. that an OR
+         * result only hit "jeans" and not "summer". Returns null for single-word
+         * searches (where coverage is trivial) or when no words were entered.
+         * Purely derived from the already-present `matched_queries` terms.
+         */
+        termCoverage(matchedQueries) {
+            const words = this.currentSearchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+
+            if (words.length < 2) {
+                return null;
+            }
+
+            const matchedText = Object.keys(matchedQueries)
+                .map((matchedQuery) => {
+                    try {
+                        return (JSON.parse(matchedQuery).term ?? '').toLowerCase();
+                    } catch {
+                        return '';
+                    }
+                })
+                .join(' ');
+
+            const matched = words.filter((word) => matchedText.includes(word));
+            const missed = words.filter((word) => !matchedText.includes(word));
+
+            return { matched, missed };
         },
 
         /**
