@@ -120,7 +120,7 @@
       "weight": "weight",
       "partialContext": "· “{fragment}” in “{word}”",
       "partialContextWhole": "· in “{word}”",
-      "scoreHelpText": "Elasticsearch's combined relevance for this result. Within each field it keeps the strongest matching clause and adds a small fraction of the others, then multiplies by the field's weight. The per-clause numbers shown here are BEFORE that weight — so a field like \"name\" (weight 700) contributes roughly its top clause × 700, and the fields are then combined into this total. That is why the total is far larger than the individual bars, which show relative strength and do not sum to it. The same word can also score differently in two fields — each field's score reflects how rare the word is there and how short that field's text is.",
+      "scoreHelpText": "Elasticsearch's combined relevance for this result. Within each field it keeps the strongest matching clause and adds a small fraction of the weaker ones (fuzzy, prefix, partial), then multiplies by the field's weight. The bars shown here are already weight-scaled, so fields with different weights can be compared directly. Each bar shows only a field's strongest clause, so together they stop a little short of the total — the gap is those weaker same-field clauses, which aren't drawn separately. The same word can also score differently in two fields — each field's score reflects how rare the word is there and how short that field's text is.",
       "uniformScoresHint": "All results share the same score, so their order here is not meaningful.",
       "matchType": {
         "exact": "exact",
