@@ -490,7 +490,13 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
             },
         };
 
-        expect(wrapper.vm.getExplainBreakdown(item).terms).toEqual({ matched: ['marble', 'gaylord'], missed: [] });
+        expect(wrapper.vm.getExplainBreakdown(item).terms).toEqual({
+            matched: [
+                'marble',
+                'gaylord',
+            ],
+            missed: [],
+        });
     });
 
     it('does not report term coverage for a single-word search (coverage is trivial)', async () => {
