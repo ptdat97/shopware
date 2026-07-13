@@ -286,7 +286,9 @@
         <!-- Open API DTO generation -->
         <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoSchemaParser"/>
 
-        <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoClassRenderer"/>
+        <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoClassRenderer">
+            <argument type="service" id="Psr\Clock\ClockInterface"/>
+        </service>
 
         <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoGenerator">
             <argument type="service" id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoSchemaParser"/>
