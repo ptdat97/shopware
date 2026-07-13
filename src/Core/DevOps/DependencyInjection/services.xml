@@ -49,12 +49,5 @@
 
             <tag name="shopware.scripts_reference.generator"/>
         </service>
-
-        <service id="Shopware\Core\DevOps\System\Command\OpenApiValidationCommand">
-            <argument type="service" id="Symfony\Contracts\HttpClient\HttpClientInterface"/>
-            <argument type="service" id="Shopware\Core\Framework\Api\ApiDefinition\DefinitionService"/>
-
-            <tag name="console.command"/>
-        </service>
     </services>
 </container>

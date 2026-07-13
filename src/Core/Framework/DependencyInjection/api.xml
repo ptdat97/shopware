@@ -89,6 +89,20 @@
             <argument type="service" id="integration.repository"/>
         </service>
 
+        <service id="Shopware\Core\Framework\Api\Command\OpenApiValidationCommand">
+            <argument type="service" id="Symfony\Contracts\HttpClient\HttpClientInterface"/>
+            <argument type="service" id="Shopware\Core\Framework\Api\ApiDefinition\DefinitionService"/>
+
+            <tag name="console.command"/>
+        </service>
+
+
+        <service id="Shopware\Core\Framework\Api\Command\OpenApiDtoGenerationCommand">
+            <argument type="service" id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoGenerator"/>
+
+            <tag name="console.command"/>
+        </service>
+
         <!-- Serializer -->
         <service id="Shopware\Core\Framework\Api\Serializer\JsonApiDecoder">
             <tag name="serializer.encoder"/>
@@ -267,6 +281,18 @@
             <argument type="service" id="Shopware\Core\Framework\Api\OAuth\AccessTokenRepository"/>
             <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="shopware.jwt_config"/>
+        </service>
+
+        <!-- Open API DTO generation -->
+        <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoSchemaParser"/>
+
+        <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoClassRenderer"/>
+
+        <service id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoGenerator">
+            <argument type="service" id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoSchemaParser"/>
+            <argument type="service" id="Shopware\Core\Framework\Api\OpenApi\OpenApiDtoClassRenderer"/>
+            <argument type="service" id="Symfony\Component\Filesystem\Filesystem"/>
+            <argument>%kernel.bundles_metadata%</argument>
         </service>
 
         <!-- Events -->

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Shopware\Core\DevOps\System\Command;
+namespace Shopware\Core\Framework\Api\Command;
 
 use Shopware\Core\Framework\Adapter\Console\ShopwareStyle;
 use Shopware\Core\Framework\Api\ApiDefinition\DefinitionService;
