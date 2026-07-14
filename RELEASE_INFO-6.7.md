@@ -380,6 +380,12 @@ The administration media folder settings modal (`sw-media-modal-folder-settings`
 * `sw-media-modal-folder-settings__mediaFolder`
 * `sw-media-modal-folder-settings__configuration`
 
+### App cookies use generic feature storage
+
+App-declared cookies are now persisted through the generic app feature storage instead of the `cookies` field on the `app` entity. Installed apps do not need to change their manifests.
+
+`AppEntity::getCookies()` and `setCookies()` are deprecated. They remain callable for backwards compatibility, but the app system no longer populates or consumes the field.
+
 ## Hosting & Configuration
 
 ### Optional `Clear-Site-Data` header on customer logout
