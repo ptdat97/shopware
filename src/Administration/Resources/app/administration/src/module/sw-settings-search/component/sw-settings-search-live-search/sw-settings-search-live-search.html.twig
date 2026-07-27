@@ -172,91 +172,12 @@
         {% endblock %}
 
         {% block sw_settings_search_view_live_search_results_explain %}
-        <div
-            v-if="selectedExplainBreakdown"
-            class="sw-settings-search-live-search__explain"
-        >
-            <div class="sw-settings-search-live-search__explain-header">
-                <span class="sw-settings-search-live-search__explain-title">
-                    {{ $t('sw-settings-search.liveSearchTab.explainTitle') }}<template v-if="selectedExplainName"> · {{ selectedExplainName }}</template>
-                </span>
-                <span class="sw-settings-search-live-search__explain-total">
-                    {{ $t('sw-settings-search.liveSearchTab.totalScore') }}: {{ formatScore(selectedExplainBreakdown.total) }}
-                    <sw-help-text
-                        class="sw-settings-search-live-search__explain-total-help"
-                        :text="$t('sw-settings-search.liveSearchTab.scoreHelpText')"
-                    />
-                </span>
-            </div>
-
-            <p
-                v-if="scoresAreUniform"
-                class="sw-settings-search-live-search__explain-hint"
-            >
-                {{ $t('sw-settings-search.liveSearchTab.uniformScoresHint') }}
-            </p>
-
-            <p
-                v-if="selectedExplainBreakdown.terms && selectedExplainBreakdown.terms.missed.length"
-                class="sw-settings-search-live-search__explain-terms"
-            >
-                <span class="sw-settings-search-live-search__explain-terms-matched">{{ $t('sw-settings-search.liveSearchTab.matchedTerms') }}: {{ selectedExplainBreakdown.terms.matched.join(', ') || '—' }}</span>
-                <span class="sw-settings-search-live-search__explain-terms-missed">{{ $t('sw-settings-search.liveSearchTab.unmatchedTerms') }}: {{ selectedExplainBreakdown.terms.missed.join(', ') }}</span>
-            </p>
-
-            <div
-                v-for="(section, sectionIndex) in selectedExplainBreakdown.sections"
-                :key="sectionIndex"
-                class="sw-settings-search-live-search__explain-section"
-            >
-                <h5 class="sw-settings-search-live-search__explain-section-title">{{ section.label }}</h5>
-
-                <div
-                    v-for="(row, rowIndex) in section.rows"
-                    :key="rowIndex"
-                    class="sw-settings-search-live-search__explain-row"
-                >
-                    <div class="sw-settings-search-live-search__explain-row-head">
-                        <span class="sw-settings-search-live-search__explain-row-label">{{ fieldLabel(row.label) }}</span>
-                        <span
-                            v-if="row.ranking !== null && row.ranking !== undefined"
-                            class="sw-settings-search-live-search__explain-row-weight"
-                        >{{ $t('sw-settings-search.liveSearchTab.weight') }} {{ row.ranking }}</span>
-                    </div>
-
-                    <div
-                        v-for="(signal, signalIndex) in row.signals"
-                        :key="signalIndex"
-                        class="sw-settings-search-live-search__explain-signal"
-                    >
-                        <span class="sw-settings-search-live-search__explain-signal-label">
-                            <span
-                                v-if="signal.type"
-                                v-tooltip="explainTypeTooltip(signal.type)"
-                                class="sw-settings-search-live-search__explain-row-type"
-                            >{{ explainTypeLabel(signal.type) }}</span>
-                            <span
-                                v-if="signal.term"
-                                class="sw-settings-search-live-search__explain-signal-term"
-                            >“{{ signal.term }}”</span>
-                            <span
-                                v-if="signal.context"
-                                class="sw-settings-search-live-search__explain-signal-context"
-                            >{{ signal.context.whole
-                                ? $t('sw-settings-search.liveSearchTab.partialContextWhole', { word: signal.context.word })
-                                : $t('sw-settings-search.liveSearchTab.partialContext', { fragment: signal.context.fragment, word: signal.context.word }) }}</span>
-                        </span>
-                        <span class="sw-settings-search-live-search__explain-signal-bar">
-                            <span
-                                class="sw-settings-search-live-search__explain-signal-bar-fill"
-                                :style="{ width: signal.barWidth }"
-                            ></span>
-                        </span>
-                        <span class="sw-settings-search-live-search__explain-signal-score">{{ signal.score }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <sw-settings-search-live-search-explain
+            v-if="selectedExplainItem"
+            :item="selectedExplainItem"
+            :search-term="currentSearchTerm"
+            :scores-are-uniform="scoresAreUniform"
+        />
         {% endblock %}
     </div>
     {% endblock %}
