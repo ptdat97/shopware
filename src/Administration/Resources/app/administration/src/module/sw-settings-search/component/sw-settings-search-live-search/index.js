@@ -92,30 +92,14 @@ export default {
             return this.liveSearchResults && this.liveSearchResults.elements;
         },
 
-        /**
-         * The list of result rows the explain helpers operate on. Core renders
-         * `products`; the AdvancedSearch override sources its grid from a
-         * different list and overrides this getter accordingly.
-         */
         resultItems() {
             return this.products;
         },
 
-        /**
-         * The term the results were searched for. Core keeps it in
-         * `liveSearchTerm`; the AdvancedSearch override uses `searchTerm` and
-         * overrides this accordingly, so the shared explain helpers can read it.
-         */
         currentSearchTerm() {
             return this.liveSearchTerm ?? '';
         },
 
-        /**
-         * How many results precede the page currently shown in the grid, so the
-         * rank keeps counting across pages. Core loads the results and paginates
-         * client-side (nothing precedes → 0); the AdvancedSearch override
-         * paginates server-side and overrides this with its page offset.
-         */
         resultOffset() {
             return 0;
         },
@@ -272,11 +256,6 @@ export default {
             return parseFloat(item?.extensions?.search?._score) || 0;
         },
 
-        /**
-         * Score is no longer rounded to an integer — that hid differences
-         * between near-identical scores. Whole numbers stay whole; fractional
-         * scores keep one decimal.
-         */
         formatScore(value) {
             const score = parseFloat(value) || 0;
 
@@ -318,12 +297,6 @@ export default {
             return this.selectedExplainId !== null && this.selectedExplainId === this.explainKey(item);
         },
 
-        /**
-         * Structured relevance breakdown for the explain panel. Returns `null`
-         * when the search engine provided no `matched_queries` (e.g. a
-         * non-Elasticsearch / MySQL search), so the panel is skipped entirely.
-         * The AdvancedSearch extension appends its own sections via `$super`.
-         */
         getExplainBreakdown(item) {
             const matchedQueries = item?.extensions?.search?.matched_queries;
 
@@ -350,13 +323,6 @@ export default {
             };
         },
 
-        /**
-         * For a multi-word search, which of the entered words this result actually
-         * matched on and which it did not — so a merchant can see e.g. that an OR
-         * result only hit "jeans" and not "summer". Returns null for single-word
-         * searches (where coverage is trivial) or when no words were entered.
-         * Purely derived from the already-present `matched_queries` terms.
-         */
         termCoverage(matchedQueries) {
             const words = this.currentSearchTerm.toLowerCase().split(/\s+/).filter(Boolean);
 
@@ -578,12 +544,6 @@ export default {
             return best;
         },
 
-        /**
-         * Strips Elasticsearch internals from a resolved field name so the panel
-         * shows the field a merchant configured: the language id translated
-         * fields are indexed under (`name.<uuid>` → `name`) and the analyzer
-         * subfields (`.search` / `.exact` / `.ngram`).
-         */
         humanizeField(field) {
             if (!field) {
                 return '';
@@ -619,12 +579,6 @@ export default {
             return this.$t(`sw-settings-search.liveSearchTab.matchTypeTooltip.${type}`);
         },
 
-        /**
-         * Translates a resolved field name to the same human label the search
-         * configuration table uses (`generalTab.configFields.*`). Falls back to
-         * the raw field when there is no snippet — e.g. a custom field like
-         * `customFields.material`, or the AdvancedSearch boost/cross-entity rows.
-         */
         fieldLabel(field) {
             const snippetKey = {
                 name: 'name',
