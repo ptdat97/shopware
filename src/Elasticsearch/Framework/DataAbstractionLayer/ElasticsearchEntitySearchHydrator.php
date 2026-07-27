@@ -18,7 +18,7 @@ class ElasticsearchEntitySearchHydrator extends AbstractElasticsearchSearchHydra
     }
 
     /**
-     * @param array{ hits?: array{ hits: array<int, array{_id?: string, _score?: float, _source?: array<mixed>, inner_hits?: array{ inner?: array<mixed>}}>}, aggregations?: array<string, array<string, mixed>>} $result
+     * @param array{ hits?: array{ hits: array<int, array{_id?: string, _score?: float, _source?: array<mixed>, matched_queries?: array<string, float>, inner_hits?: array{ inner?: array<mixed>}}>}, aggregations?: array<string, array<string, mixed>>} $result
      */
     public function hydrate(EntityDefinition $definition, Criteria $criteria, Context $context, array $result): IdSearchResult
     {
@@ -36,7 +36,11 @@ class ElasticsearchEntitySearchHydrator extends AbstractElasticsearchSearchHydra
                 'primaryKey' => $id,
                 'data' => array_merge(
                     $hit['_source'] ?? [],
-                    ['id' => $id, '_score' => $hit['_score']]
+                    ['id' => $id, '_score' => $hit['_score']],
+                    // In explain mode ES reports the per-clause scores
+                    // (include_named_queries_score) — pass them through so the
+                    // admin live-search preview can explain the ranking.
+                    isset($hit['matched_queries']) ? ['matched_queries' => $hit['matched_queries']] : [],
                 ),
             ];
         }

@@ -169,7 +169,10 @@ class FieldQueryBuilder extends AbstractFieldQueryBuilder
         }
 
         $phrase = new MatchPhrasePrefixQuery($config->getField() . '.search', $token, $params);
-        $this->nameClause($phrase, $config, $token, 'phrase', $context);
+        // The ranking is folded into the clause boost above, so the named-query score ES
+        // reports for it already carries the field weight — flag it, or the live-search
+        // preview would scale it by the ranking a second time.
+        $this->nameClause($phrase, $config, $token, 'phrase', $context, true);
 
         return $phrase;
     }
@@ -249,19 +252,30 @@ class FieldQueryBuilder extends AbstractFieldQueryBuilder
     /**
      * In explain mode, tag a clause with its match type so the live-search preview can report
      * how the field matched. Gated on the state, so normal search is untouched.
+     *
+     * `$weighted` marks a clause whose own boost already contains the field ranking (the
+     * phrase clause), so its named-query score is already weight-scaled; the preview
+     * multiplies un-flagged clause scores by the ranking to put every clause on the same
+     * footing, and must not do that twice.
      */
-    private function nameClause(BuilderInterface $clause, SearchFieldConfig $config, string $term, string $type, Context $context): void
+    private function nameClause(BuilderInterface $clause, SearchFieldConfig $config, string $term, string $type, Context $context, bool $weighted = false): void
     {
         if (!$context->hasState(Context::ELASTICSEARCH_EXPLAIN_MODE) || !method_exists($clause, 'addParameter')) {
             return;
         }
 
-        $clause->addParameter('_name', (string) json_encode([
+        $payload = [
             'field' => $config->getField(),
             'term' => $term,
             'ranking' => $config->getRanking(),
             'type' => $type,
-        ]));
+        ];
+
+        if ($weighted) {
+            $payload['weighted'] = true;
+        }
+
+        $clause->addParameter('_name', (string) json_encode($payload));
     }
 
     /**
