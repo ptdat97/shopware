@@ -5,12 +5,10 @@ import template from './sw-settings-search-live-search-explain.html.twig';
 import './sw-settings-search-live-search-explain.scss';
 
 /**
- * Renders the "Why this ranking?" breakdown for one live-search result row.
- * The parent (`sw-settings-search-live-search`) owns the grid and which row is
- * expanded; this component owns how that row's `matched_queries` become an
- * explainable breakdown. The AdvancedSearch extension overrides
- * `getExplainBreakdown` here (via `$super`) to add its boosting and
- * cross-search sections.
+ * The "Why this ranking?" breakdown for one live-search result row. The parent
+ * owns the grid and which row is expanded; the AdvancedSearch extension
+ * overrides `getExplainBreakdown` here to add its boosting / cross-search
+ * sections.
  */
 // eslint-disable-next-line sw-deprecation-rules/private-feature-declarations
 export default {
@@ -22,20 +20,14 @@ export default {
             required: true,
         },
 
-        /**
-         * The term the displayed results were actually searched for — used to
-         * report which of its words this result matched.
-         */
+        // The term the displayed results were actually searched for.
         searchTerm: {
             type: String,
             required: false,
             default: '',
         },
 
-        /**
-         * Whether every result in the set shares the same score. The order is
-         * a tie then, and the panel says so instead of implying a ranking.
-         */
+        // All results share one score — the order is a tie, and the panel says so.
         scoresAreUniform: {
             type: Boolean,
             required: false,
@@ -97,9 +89,8 @@ export default {
                 return null;
             }
 
-            // Whole-word equality, NOT a substring test — "iron" must not count
-            // "on" as matched. A phrase term ("paper rippers") covers each of
-            // its words.
+            // Whole-word equality — "iron" must not count "on" as matched; a
+            // phrase term ("paper rippers") covers each of its words.
             const matchedWords = new Set(
                 Object.keys(matchedQueries).flatMap((matchedQuery) => {
                     try {
@@ -264,12 +255,8 @@ export default {
                 .map(({ top, ...row }) => row);
         },
 
-        /**
-         * Boost / cross-search rows (added by the AdvancedSearch override) have
-         * a single signal with no match type, so the rule name + (optional)
-         * term + bar + score fit on one line — unlike relevance rows, whose
-         * typed signals warrant a separate line each.
-         */
+        // A single typeless signal (AdvancedSearch boost / cross-search rows)
+        // fits on one line — name, bar and score, no per-type rows.
         isFlatRow(row) {
             return row.signals.length === 1 && !row.signals[0].type;
         },
@@ -308,11 +295,8 @@ export default {
             return { ...best, whole: best.fragment === needle };
         },
 
-        /**
-         * Lowercases and ascii-folds a string the way the search analyzer does
-         * (ü → u, ß → ss), so the fragment comparison sees the same text
-         * Elasticsearch actually matched on — "muller" does hit "Müller".
-         */
+        // Lowercase + ascii-fold like the search analyzer (ü → u, ß → ss), so
+        // the fragment comparison sees the text Elasticsearch matched on.
         foldTerm(value) {
             return value
                 .toLowerCase()
@@ -356,10 +340,8 @@ export default {
                 .join('.');
         },
 
-        /**
-         * A decorating plugin can emit match types core has no snippet for —
-         * fall back to the raw type instead of leaking the snippet key.
-         */
+        // Unknown (plugin-supplied) match types fall back to the raw type
+        // instead of leaking the snippet key.
         explainTypeLabel(type) {
             if (!type) {
                 return '';

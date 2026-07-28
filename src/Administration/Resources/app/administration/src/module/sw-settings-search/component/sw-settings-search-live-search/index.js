@@ -97,13 +97,8 @@ export default {
             return this.products;
         },
 
-        /**
-         * The term the displayed results were actually searched for —
-         * snapshotted when the search runs, NOT the live input, which changes
-         * on every keystroke while the old results are still on screen. The
-         * AdvancedSearch override keeps its own executed term and overrides
-         * this accordingly, so the shared explain helpers can read it.
-         */
+        // The executed search term — snapshotted when the search runs, not the
+        // live input. The AdvancedSearch override redirects this to its own term.
         currentSearchTerm() {
             return this.executedSearchTerm ?? '';
         },
@@ -278,15 +273,9 @@ export default {
             return this.resultOffset + index + 1;
         },
 
-        /**
-         * A row is only explainable when its matched_queries yield at least one
-         * renderable breakdown row — the map itself can be present but empty,
-         * or contain only boost / cross-entity / foreign clauses, and a
-         * clickable score whose panel never opens is worse than none. Mirrors
-         * the clause filter of `sw-settings-search-live-search-explain`'s
-         * `collectFieldRows`; the AdvancedSearch extension (which explains
-         * boost / cross-entity clauses in its own sections) widens this check.
-         */
+        // Explainable = at least one field clause (mirrors the explain
+        // component's filter) — a clickable score that opens nothing is worse
+        // than none. The AdvancedSearch extension widens this check.
         hasExplain(item) {
             const matchedQueries = item?.extensions?.search?.matched_queries;
 
