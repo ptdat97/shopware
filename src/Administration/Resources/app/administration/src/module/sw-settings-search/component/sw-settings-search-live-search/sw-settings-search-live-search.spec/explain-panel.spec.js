@@ -110,4 +110,20 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
         await wrapper.setData({ liveSearchTerm: 'iron man' });
         expect(wrapper.vm.currentSearchTerm).toBe('iron');
     });
+
+    it('keeps the previously executed term when a search fails', async () => {
+        // a prior successful search is reflected in the snapshot
+        await wrapper.setData({ liveSearchTerm: 'iron', executedSearchTerm: 'iron' });
+
+        // the next search rejects — its term must not become the executed term,
+        // or the panel would compute coverage against a search that never landed
+        wrapper.vm.createNotificationError = jest.fn();
+        wrapper.vm.liveSearchService.search.mockRejectedValueOnce(new Error('boom'));
+        await wrapper.setData({ liveSearchTerm: 'steel' });
+        wrapper.vm.searchOnStorefront();
+        await flushPromises();
+
+        expect(wrapper.vm.executedSearchTerm).toBe('iron');
+        expect(wrapper.vm.currentSearchTerm).toBe('iron');
+    });
 });
