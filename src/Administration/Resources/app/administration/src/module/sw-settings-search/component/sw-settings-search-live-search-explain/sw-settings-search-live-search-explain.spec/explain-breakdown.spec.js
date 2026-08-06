@@ -10,6 +10,10 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
         wrapper = await createWrapper();
     });
 
+    afterEach(() => {
+        wrapper?.unmount();
+    });
+
     it('should build a structured relevance breakdown from Elasticsearch matched_queries', async () => {
         const item = {
             extensions: {

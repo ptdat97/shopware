@@ -11,6 +11,10 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
         await flushPromises();
     });
 
+    afterEach(() => {
+        wrapper?.unmount();
+    });
+
     it('should render the sales channel select', async () => {
         expect(wrapper.find('.sw-settings-search-live-search__sales-channel-select').exists()).toBeTruthy();
     });

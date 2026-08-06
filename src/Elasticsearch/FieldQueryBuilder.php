@@ -89,7 +89,10 @@ class FieldQueryBuilder extends AbstractFieldQueryBuilder
         }
 
         $term = new TermQuery($config->getField(), $normalizedToken, ['boost' => $config->getRanking()]);
-        $this->nameClause($term, $config, (string) $normalizedToken, 'exact', $context);
+        // The ranking is folded into the clause boost above, so the named-query score already
+        // carries the field weight — flag it, or the preview would scale it by the ranking a
+        // second time when the clause survives inside a DisMax (multi-language chain).
+        $this->nameClause($term, $config, (string) $normalizedToken, 'exact', $context, true);
 
         return $term;
     }

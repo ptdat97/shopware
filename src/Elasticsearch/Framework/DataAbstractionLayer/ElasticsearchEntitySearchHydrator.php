@@ -38,9 +38,13 @@ class ElasticsearchEntitySearchHydrator extends AbstractElasticsearchSearchHydra
                     $hit['_source'] ?? [],
                     ['id' => $id, '_score' => $hit['_score']],
                     // In explain mode ES reports the per-clause scores
-                    // (include_named_queries_score) — pass them through so the
-                    // admin live-search preview can explain the ranking.
-                    isset($hit['matched_queries']) ? ['matched_queries' => $hit['matched_queries']] : [],
+                    // (include_named_queries_score) — pass them through so the admin
+                    // live-search preview can explain the ranking. Gated on the state so a
+                    // third-party named query in a normal search can't leak its clause list
+                    // into the store-api search extension.
+                    $context->hasState(Context::ELASTICSEARCH_EXPLAIN_MODE) && isset($hit['matched_queries'])
+                        ? ['matched_queries' => $hit['matched_queries']]
+                        : [],
                 ),
             ];
         }

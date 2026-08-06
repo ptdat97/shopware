@@ -11,6 +11,10 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
         await flushPromises();
     });
 
+    afterEach(() => {
+        wrapper?.unmount();
+    });
+
     it('should mark a row explainable only when a field clause matched', async () => {
         // a field clause → explainable
         const item = {
@@ -97,6 +101,8 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
     it('snapshots the executed term so an open panel ignores keystrokes in the search box', async () => {
         await wrapper.setData({ liveSearchTerm: 'iron' });
         wrapper.vm.searchOnStorefront();
+        // the snapshot is taken only once the results arrive, not at call time
+        await flushPromises();
         expect(wrapper.vm.executedSearchTerm).toBe('iron');
 
         // typing changes the live input but no search has run yet — the explain

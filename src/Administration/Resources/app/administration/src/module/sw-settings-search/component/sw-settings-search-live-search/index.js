@@ -4,6 +4,7 @@
 import template from './sw-settings-search-live-search.html.twig';
 import './sw-settings-search-live-search.scss';
 import '../sw-settings-search-live-search-keyword';
+import { parseClauses, isFieldClause } from '../../helper/explain.helper';
 
 const { Mixin } = Shopware;
 const { Criteria } = Shopware.Data;
@@ -125,6 +126,14 @@ export default {
             return this.resultItems.find((product) => this.explainKey(product) === this.selectedExplainId) ?? null;
         },
 
+        // Memoizes hasExplain per result row so a keystroke re-render doesn't
+        // re-parse every clause of every row; rebuilt when the result set changes.
+        explainCache() {
+            void this.resultItems;
+
+            return new WeakMap();
+        },
+
         scoresAreUniform() {
             if (!this.resultItems || this.resultItems.length < 2) {
                 return false;
@@ -179,16 +188,20 @@ export default {
                 return;
             }
 
-            this.executedSearchTerm = this.liveSearchTerm;
+            const searchedTerm = this.liveSearchTerm;
             this.searchInProgress = true;
 
             this.liveSearchService
                 .search(this.searchParams, {}, {}, { 'sw-language-id': Shopware.Context.api.languageId })
                 .then((data) => {
                     this.liveSearchResults = data.data;
+                    // Snapshot the term the displayed results were searched with only
+                    // once they arrive — a failed or superseded request must not
+                    // repoint term coverage at a search that never landed.
+                    this.executedSearchTerm = searchedTerm;
                     this.searchInProgress = false;
                     this.$emit('live-search-results-change', {
-                        searchTerms: this.liveSearchTerm,
+                        searchTerms: searchedTerm,
                         searchResults: this.liveSearchResults,
                     });
                 })
@@ -273,25 +286,26 @@ export default {
             return this.resultOffset + index + 1;
         },
 
-        // Explainable = at least one field clause (mirrors the explain
-        // component's filter) — a clickable score that opens nothing is worse
-        // than none. The AdvancedSearch extension widens this check.
+        // Explainable = at least one field clause (see the explain helper) — a
+        // clickable score that opens nothing is worse than none. The
+        // AdvancedSearch extension widens this check. Memoized per row.
         hasExplain(item) {
-            const matchedQueries = item?.extensions?.search?.matched_queries;
-
-            if (!matchedQueries) {
+            if (!item) {
                 return false;
             }
 
-            return Object.keys(matchedQueries).some((matchedQuery) => {
-                try {
-                    const parsedQuery = JSON.parse(matchedQuery);
+            const cache = this.explainCache;
 
-                    return !parsedQuery.boost && !parsedQuery.crossEntity;
-                } catch {
-                    return false;
-                }
-            });
+            if (cache.has(item)) {
+                return cache.get(item);
+            }
+
+            const explainable = parseClauses(item?.extensions?.search?.matched_queries).some(({ parsed }) =>
+                isFieldClause(parsed),
+            );
+            cache.set(item, explainable);
+
+            return explainable;
         },
 
         toggleExplain(item) {

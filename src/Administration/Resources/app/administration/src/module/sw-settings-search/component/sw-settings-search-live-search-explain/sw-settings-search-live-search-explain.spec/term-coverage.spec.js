@@ -15,8 +15,13 @@ function itemWithClauses(clauses) {
 }
 
 describe('src/module/sw-settings-search/component/sw-settings-search-live-search-explain: term coverage', () => {
+    let wrapper;
+
+    afterEach(() => {
+        wrapper?.unmount();
+    });
     it('reports which query words matched and which did not for a multi-word search', async () => {
-        const wrapper = await createWrapper({ searchTerm: 'marble gaylord' });
+        wrapper = await createWrapper({ searchTerm: 'marble gaylord' });
 
         // only "marble" produced a matched clause; "gaylord" hit nothing on this result
         const item = itemWithClauses({
@@ -27,7 +32,7 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
     });
 
     it('reports every word as matched when the result hit all query words', async () => {
-        const wrapper = await createWrapper({ searchTerm: 'marble gaylord' });
+        wrapper = await createWrapper({ searchTerm: 'marble gaylord' });
 
         const item = itemWithClauses({
             [JSON.stringify({ field: 'name', term: 'marble', type: 'exact', ranking: 700 })]: 30,
@@ -44,7 +49,7 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
     });
 
     it('does not count a word as matched because it is a substring of another matched term', async () => {
-        const wrapper = await createWrapper({ searchTerm: 'iron on' });
+        wrapper = await createWrapper({ searchTerm: 'iron on' });
 
         // only "iron" fired a clause; "on" must not count as matched just
         // because it is a substring of "iron"
@@ -56,7 +61,7 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
     });
 
     it('counts every word of a matched phrase term as matched', async () => {
-        const wrapper = await createWrapper({ searchTerm: 'paper rippers' });
+        wrapper = await createWrapper({ searchTerm: 'paper rippers' });
 
         // the whole-phrase clause carries a multi-word term — each of its words counts
         const item = itemWithClauses({
@@ -73,7 +78,7 @@ describe('src/module/sw-settings-search/component/sw-settings-search-live-search
     });
 
     it('does not report term coverage for a single-word search (coverage is trivial)', async () => {
-        const wrapper = await createWrapper({ searchTerm: 'marble' });
+        wrapper = await createWrapper({ searchTerm: 'marble' });
 
         const item = itemWithClauses({
             [JSON.stringify({ field: 'name', term: 'marble', type: 'exact', ranking: 700 })]: 30,

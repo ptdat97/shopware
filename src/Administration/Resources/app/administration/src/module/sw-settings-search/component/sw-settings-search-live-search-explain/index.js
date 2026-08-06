@@ -3,6 +3,7 @@
  */
 import template from './sw-settings-search-live-search-explain.html.twig';
 import './sw-settings-search-live-search-explain.scss';
+import { parseClauses, isFieldClause } from '../../helper/explain.helper';
 
 /**
  * The "Why this ranking?" breakdown for one live-search result row. The parent
@@ -92,13 +93,9 @@ export default {
             // Whole-word equality — "iron" must not count "on" as matched; a
             // phrase term ("paper rippers") covers each of its words.
             const matchedWords = new Set(
-                Object.keys(matchedQueries).flatMap((matchedQuery) => {
-                    try {
-                        return (JSON.parse(matchedQuery).term ?? '').toLowerCase().split(/\s+/).filter(Boolean);
-                    } catch {
-                        return [];
-                    }
-                }),
+                parseClauses(matchedQueries).flatMap(({ parsed }) =>
+                    (parsed.term ?? '').toLowerCase().split(/\s+/).filter(Boolean),
+                ),
             );
 
             const matched = words.filter((word) => matchedWords.has(word));
@@ -122,22 +119,13 @@ export default {
         collectFieldRows(matchedQueries) {
             const groups = new Map();
 
-            Object.keys(matchedQueries).forEach((matchedQuery) => {
-                let parsedQuery;
-
-                try {
-                    parsedQuery = JSON.parse(matchedQuery);
-                } catch {
-                    return;
-                }
-
+            parseClauses(matchedQueries).forEach(({ parsed: parsedQuery, score: rawScore }) => {
                 // Boost / cross-entity clauses are explained by the AdvancedSearch extension.
-                if (parsedQuery.boost || parsedQuery.crossEntity) {
+                if (!isFieldClause(parsedQuery)) {
                     return;
                 }
 
                 const label = this.humanizeField(parsedQuery.field);
-                const rawScore = parseFloat(matchedQueries[matchedQuery]) || 0;
 
                 // Nested / leaf fields are named at the field level, so their score already
                 // includes the field weight; text fields are named per clause, so their score
@@ -229,7 +217,9 @@ export default {
                             // `phrase` match — the underlying clause is a phrase-prefix,
                             // but "phrase" is what it means to a merchant, and the
                             // single-word fragment hint below would be misleading for it.
-                            const isPhrase = (signal.term ?? '').includes(' ');
+                            // Only for typed (field) signals — the AdvancedSearch
+                            // boost / cross-search signals are typeless and stay flat.
+                            const isPhrase = !!signal.type && (signal.term ?? '').includes(' ');
 
                             return {
                                 type: isPhrase ? 'phrase' : (signal.type ?? null),
