@@ -52,6 +52,17 @@ class EntityRouteResolver
         return $this->router->generate($config->getRouteName(), $config->getPrimaryKeyParameter($primaryKey));
     }
 
+    public function findEntitySeoUrlRoute(string $routeName): ?EntitySeoUrlRouteInterface
+    {
+        foreach ($this->storeApiSeoUrlRoutes as $entitySeoUrlRoute) {
+            if ($entitySeoUrlRoute->getConfig()->getRouteName() === $routeName) {
+                return $entitySeoUrlRoute;
+            }
+        }
+
+        return null;
+    }
+
     private function getRouteConfig(string $entityName, ?string $salesChannelTypeId = null): SeoUrlRouteConfig
     {
         if ($salesChannelTypeId === Defaults::SALES_CHANNEL_TYPE_API) {

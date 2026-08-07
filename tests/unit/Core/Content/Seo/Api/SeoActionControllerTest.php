@@ -36,7 +36,6 @@ class SeoActionControllerTest extends TestCase
     public static function aclProtectedRouteProvider(): \Generator
     {
         yield 'validate' => ['api.seo-url-template.validate'];
-        yield 'preview' => ['api.seo-url-template.preview'];
     }
 
     /**

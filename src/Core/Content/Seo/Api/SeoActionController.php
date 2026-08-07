@@ -8,12 +8,14 @@ use Shopware\Core\Content\Seo\SeoException;
 use Shopware\Core\Content\Seo\SeoUrl\SeoUrlEntity;
 use Shopware\Core\Content\Seo\SeoUrlGenerator;
 use Shopware\Core\Content\Seo\SeoUrlPersister;
+use Shopware\Core\Content\Seo\SeoUrlRoute\EntityRouteResolver;
 use Shopware\Core\Content\Seo\SeoUrlRoute\EntitySeoUrlRouteInterface;
 use Shopware\Core\Content\Seo\SeoUrlRoute\SeoUrlRouteConfig;
 use Shopware\Core\Content\Seo\SeoUrlRoute\SeoUrlRouteRegistry;
 use Shopware\Core\Content\Seo\Validation\SeoUrlDataValidationFactoryInterface;
 use Shopware\Core\Content\Seo\Validation\SeoUrlValidationFactory;
 use Shopware\Core\Defaults;
+use Shopware\Core\Framework\Api\ApiException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\DefinitionInstanceRegistry;
 use Shopware\Core\Framework\DataAbstractionLayer\Entity;
@@ -47,7 +49,6 @@ class SeoActionController extends AbstractController
      * @internal
      *
      * @param EntityRepository<SalesChannelCollection> $salesChannelRepository
-     * @param iterable<EntitySeoUrlRouteInterface> $entitySeoUrlRoutes
      */
     public function __construct(
         private readonly SeoUrlGenerator $seoUrlGenerator,
@@ -58,8 +59,7 @@ class SeoActionController extends AbstractController
         private readonly DataValidator $validator,
         private readonly EntityRepository $salesChannelRepository,
         private readonly RequestCriteriaBuilder $requestCriteriaBuilder,
-        private readonly DefinitionInstanceRegistry $definitionInstanceRegistry,
-        private readonly iterable $entitySeoUrlRoutes = []
+        private readonly EntityRouteResolver $entityRouteResolver,
     ) {
     }
 
@@ -85,25 +85,37 @@ class SeoActionController extends AbstractController
     #[Route(
         path: '/api/_action/seo-url-template/preview',
         name: 'api.seo-url-template.preview',
-        defaults: [PlatformRequest::ATTRIBUTE_ACL => ['seo_url_template:update']],
         methods: [Request::METHOD_POST]
     )]
     public function preview(Request $request, Context $context): Response
     {
+        if (!$context->isAllowed('seo_url:update') && !$context->isAllowed('seo_url_template:update')) {
+            /**
+             * @phpstan-ignore shopware.domainException (Same exception as route ACL listener)
+             */
+            throw ApiException::missingPrivileges(['seo_url:update', 'seo_url_template:update']);
+        }
+
         $this->validateSeoUrlTemplate($request);
         $seoUrlTemplate = $request->request->all();
 
         $previewCriteria = new Criteria();
-        if (\array_key_exists('criteria', $seoUrlTemplate) && \is_string($seoUrlTemplate['entityName']) && \is_array($seoUrlTemplate['criteria'])) {
-            $definition = $this->definitionInstanceRegistry->getByEntityName($seoUrlTemplate['entityName']);
+        if (
+            \array_key_exists('criteria', $seoUrlTemplate)
+            && \is_array($seoUrlTemplate['criteria'])
+            && \is_string($seoUrlTemplate['routeName'])
+        ) {
+            $seoUrlRoute = $this->getEntitySeoUrlRoute($seoUrlTemplate['routeName']);
 
-            $previewCriteria = $this->requestCriteriaBuilder->handleRequest(
-                Request::create('', Request::METHOD_POST, $seoUrlTemplate['criteria']),
-                $previewCriteria,
-                $definition,
-                $context
-            );
-            unset($seoUrlTemplate['criteria']);
+            if ($seoUrlRoute !== null) {
+                $previewCriteria = $this->requestCriteriaBuilder->handleRequest(
+                    Request::create('', Request::METHOD_POST, $seoUrlTemplate['criteria']),
+                    $previewCriteria,
+                    $seoUrlRoute->getConfig()->getDefinition(),
+                    $context
+                );
+                unset($seoUrlTemplate['criteria']);
+            }
         }
 
         try {
@@ -125,7 +137,7 @@ class SeoActionController extends AbstractController
     {
         $routeName = $data->get('routeName');
         $fk = $data->get('foreignKey');
-        $seoUrlRoute = $this->seoUrlRouteRegistry->findByRouteName($routeName) ?? $this->findEntitySeoUrlRoute($routeName);
+        $seoUrlRoute = $this->getEntitySeoUrlRoute($routeName);
 
         if ($seoUrlRoute === null) {
             throw SeoException::seoUrlRouteNotFound((string) $routeName);
@@ -159,7 +171,7 @@ class SeoActionController extends AbstractController
         }
 
         $routeName = $seoUrl->get('routeName') ?? '';
-        $seoUrlRoute = $this->seoUrlRouteRegistry->findByRouteName($routeName) ?? $this->findEntitySeoUrlRoute($routeName);
+        $seoUrlRoute = $this->getEntitySeoUrlRoute($routeName);
         if (!$seoUrlRoute) {
             throw SeoException::seoUrlRouteNotFound($seoUrl->get('routeName'));
         }
@@ -259,13 +271,19 @@ class SeoActionController extends AbstractController
     )]
     public function getDefaultSeoTemplate(string $routeName, Context $context): JsonResponse
     {
-        $seoUrlRoute = $this->seoUrlRouteRegistry->findByRouteName($routeName) ?? $this->findEntitySeoUrlRoute($routeName);
+        $seoUrlRoute = $this->getEntitySeoUrlRoute($routeName);
 
         if (!$seoUrlRoute) {
             throw SeoException::seoUrlRouteNotFound($routeName);
         }
 
         return new JsonResponse(['defaultTemplate' => $seoUrlRoute->getConfig()->getTemplate()]);
+    }
+
+    private function getEntitySeoUrlRoute(string $routeName): ?EntitySeoUrlRouteInterface
+    {
+        return $this->seoUrlRouteRegistry->findByRouteName($routeName)
+            ?? $this->entityRouteResolver->findEntitySeoUrlRoute($routeName);
     }
 
     private function validateSeoUrlTemplate(Request $request): void
@@ -281,10 +299,6 @@ class SeoActionController extends AbstractController
         if (!$request->request->has('routeName')) {
             throw SeoException::routeNameParameterIsMissing();
         }
-
-        if (!$request->request->has('entityName')) {
-            throw SeoException::entityNameParameterIsMissing();
-        }
     }
 
     /**
@@ -296,23 +310,30 @@ class SeoActionController extends AbstractController
     {
         $routeName = $seoUrlTemplate['routeName'];
 
-        // Registered storefront routes resolve directly; store-api routes (headless) resolve via the tagged
-        // entity routes. Either way they are wrapped in ConfiguredSeoUrlRoute so the generator can render them.
-        $seoUrlRoute = $this->seoUrlRouteRegistry->findByRouteName($routeName) ?? $this->findEntitySeoUrlRoute($routeName);
+        $seoUrlRoute = $this->getEntitySeoUrlRoute($routeName);
 
         if ($seoUrlRoute === null) {
             throw SeoException::seoUrlRouteNotFound($routeName);
+        }
+
+        $salesChannel = $this->resolveSalesChannel($seoUrlTemplate, $context);
+        if ($salesChannel === null) {
+            throw SeoException::salesChannelIdParameterIsMissing();
+        }
+
+        $routeNameByEntity = $this->entityRouteResolver->getRouteNameForEntityName(
+            $seoUrlRoute->getConfig()->getDefinition()->getEntityName(),
+            $salesChannel->getTypeId()
+        );
+
+        if ($routeNameByEntity !== $routeName) {
+            $seoUrlRoute = $this->getEntitySeoUrlRoute($routeNameByEntity) ?? $seoUrlRoute;
         }
 
         $route = new ConfiguredEntitySeoUrlRoute($seoUrlRoute);
         $route->getConfig()->setSkipInvalid(false);
 
         $repository = $this->getRepository($route->getConfig());
-
-        $salesChannel = $this->resolveSalesChannel($seoUrlTemplate, $context);
-        if ($salesChannel === null) {
-            throw SeoException::salesChannelIdParameterIsMissing();
-        }
 
         $template = $seoUrlTemplate['template'] ?? '';
 
@@ -327,6 +348,10 @@ class SeoActionController extends AbstractController
 
         $result = $this->seoUrlGenerator->generate($ids, $template, $route, $context, $salesChannel);
         $result = \is_array($result) ? $result : iterator_to_array($result);
+
+        foreach ($result as $seoUrl) {
+            $seoUrl->setRouteName($route->getConfig()->getRouteName());
+        }
 
         if ($salesChannel->getTypeId() !== Defaults::SALES_CHANNEL_TYPE_API) {
             return $result;
@@ -350,17 +375,6 @@ class SeoActionController extends AbstractController
             ?->firstWhere(static fn (SalesChannelDomainEntity $domain): bool => $domain->getIsExternalStorefront()
                 && $domain->getLanguageId() === $context->getLanguageId())
             ?->getUrl();
-    }
-
-    private function findEntitySeoUrlRoute(string $routeName): ?EntitySeoUrlRouteInterface
-    {
-        foreach ($this->entitySeoUrlRoutes as $entitySeoUrlRoute) {
-            if ($entitySeoUrlRoute->getConfig()->getRouteName() === $routeName) {
-                return $entitySeoUrlRoute;
-            }
-        }
-
-        return null;
     }
 
     private function loadPreviewEntity(SeoUrlRouteConfig $config, ?string $foreignKey, Context $context): ?Entity

@@ -24,7 +24,10 @@ const DISALLOWED_SEO_PATH_CHARS = /%(?![0-9A-Fa-f]{2})|[#\\\x00-\x1F\x7F]/;
 export default {
     template,
 
-    inject: ['repositoryFactory'],
+    inject: [
+        'repositoryFactory',
+        'seoUrlTemplateService',
+    ],
 
     emits: ['on-change-sales-channel'],
 
@@ -124,8 +127,38 @@ export default {
             return this.currentSalesChannelId !== null && unsupportedTypeIds.includes(salesChannel?.typeId);
         },
 
+        currentSalesChannel() {
+            const salesChannelCollection = Shopware.Store.get('swSeoUrl')?.salesChannelCollection;
+
+            return salesChannelCollection?.find((entry) => entry.id === this.currentSalesChannelId) ?? null;
+        },
+
+        currentSalesChannelIsHeadless() {
+            return this.currentSalesChannel?.typeId === Defaults.apiSalesChannelTypeId;
+        },
+
+        headlessExternalStorefrontUrl() {
+            const url = this.currentSalesChannel?.domains?.find(
+                (domain) => domain.isExternalStorefront && domain.languageId === Shopware.Context.api.languageId,
+            )?.url;
+
+            if (!url || url.endsWith('/')) {
+                return url ?? null;
+            }
+
+            return `${url}/`;
+        },
+
         seoUrlHelptext() {
-            return this.isUnsupportedSalesChannel ? this.$t('sw-seo-url.textSeoUrlsNotSupported') : null;
+            if (this.isUnsupportedSalesChannel) {
+                return this.$t('sw-seo-url.textSeoUrlsNotSupported');
+            }
+
+            if (this.currentSalesChannelIsHeadless && !this.headlessExternalStorefrontUrl) {
+                return this.$t('sw-seo-url-template-card.general.textExternalStorefrontRequired');
+            }
+
+            return null;
         },
 
         seoPathInfoError() {
@@ -150,7 +183,10 @@ export default {
         },
 
         allowInput() {
-            return this.hasDefaultTemplate || this.currentSalesChannelId !== null;
+            return (
+                (this.hasDefaultTemplate || this.currentSalesChannelId !== null) &&
+                (!this.currentSalesChannelIsHeadless || !!this.headlessExternalStorefrontUrl)
+            );
         },
     },
 
@@ -183,6 +219,7 @@ export default {
         initSalesChannelCollection() {
             const salesChannelCriteria = new Criteria(1, this.resultLimit);
             salesChannelCriteria.addAssociation('type');
+            salesChannelCriteria.addAssociation('domains');
 
             this.salesChannelRepository.search(salesChannelCriteria).then((salesChannelCollection) => {
                 Shopware.Store.get('swSeoUrl').salesChannelCollection = salesChannelCollection;
@@ -239,38 +276,63 @@ export default {
             });
         },
 
-        refreshCurrentSeoUrl() {
+        async refreshCurrentSeoUrl() {
             const actualLanguageId = Shopware.Context.api.languageId;
 
             const currentSeoUrl = this.seoUrlCollection.find((entity) => {
                 return entity.languageId === actualLanguageId && entity.salesChannelId === this.currentSalesChannelId;
             });
 
-            if (!currentSeoUrl) {
-                const entity = this.seoUrlRepository.create();
-                // Fetch any seo url as template, since we need to know foreignKey, pathInfo and the routeName
-                const seoUrl =
-                    this.seoUrlCollection.find((item) => {
-                        return item.pathInfo && item.routeName && item.foreignKey;
-                    }) || {};
-
-                entity.foreignKey = this.defaultSeoUrl?.foreignKey ?? seoUrl.foreignKey;
-                entity.isCanonical = true;
-                entity.languageId = actualLanguageId;
-                entity.salesChannelId = this.currentSalesChannelId;
-                entity.routeName = this.defaultSeoUrl?.routeName ?? seoUrl.routeName;
-                entity.pathInfo = this.defaultSeoUrl?.pathInfo ?? seoUrl.pathInfo;
-                entity.isModified = true;
-
-                this.seoUrlCollection.add(entity);
-
-                Shopware.Store.get('swSeoUrl').currentSeoUrl = entity;
+            if (currentSeoUrl) {
+                Shopware.Store.get('swSeoUrl').currentSeoUrl = currentSeoUrl;
 
                 return;
             }
 
-            Shopware.Store.get('swSeoUrl').currentSeoUrl = currentSeoUrl;
+            const entity = this.seoUrlRepository.create();
+            // Fetch any seo url as template, since we need to know foreignKey, pathInfo and the routeName
+            const seoUrl =
+                this.seoUrlCollection.find((item) => {
+                    return item.pathInfo && item.routeName && item.foreignKey;
+                }) || {};
+
+            entity.foreignKey = this.defaultSeoUrl?.foreignKey ?? seoUrl.foreignKey;
+            entity.isCanonical = true;
+            entity.languageId = actualLanguageId;
+            entity.salesChannelId = this.currentSalesChannelId;
+            entity.routeName = this.defaultSeoUrl?.routeName ?? seoUrl.routeName;
+            entity.pathInfo = this.defaultSeoUrl?.pathInfo ?? seoUrl.pathInfo;
+            entity.isModified = true;
+
+            this.seoUrlCollection.add(entity);
+
+            Shopware.Store.get('swSeoUrl').currentSeoUrl = entity;
+
+            if (this.allowInput) {
+                await this.applySeoUrlFromPreview(entity);
+            }
         },
+
+        async applySeoUrlFromPreview(entity) {
+            if (!entity.routeName) {
+                return;
+            }
+
+            const preview = await this.seoUrlTemplateService.preview({
+                routeName: entity.routeName,
+                salesChannelId: this.currentSalesChannelId,
+                template: 'preview',
+                criteria: new Criteria(1, 1).addFilter(Criteria.equals('id', entity.foreignKey)).parse(),
+            });
+
+            const seoUrl = preview?.[0];
+
+            if (seoUrl) {
+                entity.routeName = seoUrl.routeName;
+                entity.pathInfo = seoUrl.pathInfo;
+            }
+        },
+
         onSalesChannelChanged(salesChannelId) {
             this.currentSalesChannelId = salesChannelId;
             this.$emit('on-change-sales-channel', salesChannelId);

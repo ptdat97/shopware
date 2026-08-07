@@ -150,8 +150,7 @@ return static function (ContainerConfigurator $containerConfigurator): void {
             service(DataValidator::class),
             service('sales_channel.repository'),
             service(RequestCriteriaBuilder::class),
-            service(DefinitionInstanceRegistry::class),
-            tagged_iterator('shopware.entity.seo_url.route'),
+            service(EntityRouteResolver::class),
         ])
         ->call('setContainer', [
             service('service_container'),
